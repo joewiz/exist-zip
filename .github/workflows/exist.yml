@@ -59,6 +59,39 @@ jobs:
           echo "=== eXist-db logs ==="
           docker logs exist 2>&1 | tail -30
 
+      # Diagnostics: check what deployed and if ZIP module is available
+      - name: Check autodeploy and module availability
+        run: |
+          echo "=== Files in autodeploy ==="
+          docker exec exist ls -la /exist/autodeploy/ 2>&1 || true
+          echo "=== Installed packages ==="
+          curl -s -u admin: -H "Content-Type: application/xml" --data '
+          <query xmlns="http://exist.sourceforge.net/NS/exist">
+            <text><![CDATA[
+              string-join(
+                for $pkg in repo:list()
+                return $pkg || " " || repo:get-resource($pkg, "expath-pkg.xml"),
+                "&#10;"
+              )
+            ]]></text>
+          </query>' "http://localhost:8080/exist/rest/db" || true
+          echo ""
+          echo "=== Test basic XQuery ==="
+          curl -s -u admin: -H "Content-Type: application/xml" --data '
+          <query xmlns="http://exist.sourceforge.net/NS/exist">
+            <text>1 + 1</text>
+          </query>' "http://localhost:8080/exist/rest/db"
+          echo ""
+          echo "=== Test zip module import ==="
+          curl -s -u admin: -H "Content-Type: application/xml" --data '
+          <query xmlns="http://exist.sourceforge.net/NS/exist">
+            <text><![CDATA[
+              import module namespace zip = "http://expath.org/ns/zip";
+              "zip module loaded"
+            ]]></text>
+          </query>' "http://localhost:8080/exist/rest/db"
+          echo ""
+
       # Smoke tests: verify module loads and all functions are available
       - name: Test zip:zip-file and zip:text-entry round-trip
         run: |
