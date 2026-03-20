@@ -49,6 +49,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 
 import static org.junit.Assert.*;
 
@@ -84,7 +85,7 @@ public class ZipModuleTest {
 
         // Store test.zip in the database for db-URI tests
         final BrokerPool pool = existEmbeddedServer.getBrokerPool();
-        try (final DBBroker broker = pool.get(pool.getSecurityManager().getSystemSubject());
+        try (final DBBroker broker = pool.get(Optional.of(pool.getSecurityManager().getSystemSubject()));
              final Txn txn = pool.getTransactionManager().beginTransaction()) {
 
             // Create test collection
@@ -107,7 +108,7 @@ public class ZipModuleTest {
     @AfterClass
     public static void tearDown() throws Exception {
         final BrokerPool pool = existEmbeddedServer.getBrokerPool();
-        try (final DBBroker broker = pool.get(pool.getSecurityManager().getSystemSubject());
+        try (final DBBroker broker = pool.get(Optional.of(pool.getSecurityManager().getSystemSubject()));
              final Txn txn = pool.getTransactionManager().beginTransaction()) {
             final Collection collection = broker.getOrCreateCollection(txn, XmldbURI.create(TEST_COLLECTION));
             broker.removeCollection(txn, collection);
@@ -539,7 +540,7 @@ public class ZipModuleTest {
 
     private Sequence executeQuery(final String query) throws EXistException, PermissionDeniedException, XPathException {
         final BrokerPool pool = existEmbeddedServer.getBrokerPool();
-        try (final DBBroker broker = pool.get(pool.getSecurityManager().getSystemSubject())) {
+        try (final DBBroker broker = pool.get(Optional.of(pool.getSecurityManager().getSystemSubject()))) {
             final XQuery xquery = pool.getXQueryService();
             return xquery.execute(broker, query, null);
         }

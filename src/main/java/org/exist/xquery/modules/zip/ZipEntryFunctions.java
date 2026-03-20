@@ -114,12 +114,16 @@ public class ZipEntryFunctions extends BasicFunction {
         final String href = args[0].getStringValue();
         final String entryName = args[1].getStringValue();
 
-        try (final ZipFileSource source = ZipFileSource.fromUri(href, context, this)) {
+        final ZipFileSource source = ZipFileSource.fromUri(href, context, this);
+        boolean mustClose = true;
+        try {
             final ZipInputStream zis = source.getStream();
             ZipEntry zipEntry;
             while ((zipEntry = zis.getNextEntry()) != null) {
                 if (zipEntry.getName().equals(entryName)) {
                     if (isCalledAs(FS_BINARY_ENTRY_NAME)) {
+                        // BinaryValueFromInputStream takes ownership of the stream
+                        mustClose = false;
                         return extractBinaryEntry(zis);
                     } else if (isCalledAs(FS_HTML_ENTRY_NAME)) {
                         return extractHtmlEntry(zis);
@@ -133,6 +137,14 @@ public class ZipEntryFunctions extends BasicFunction {
             }
         } catch (final IOException e) {
             throw new XPathException(this, "IO error reading ZIP file: " + e.getMessage(), e);
+        } finally {
+            if (mustClose) {
+                try {
+                    source.close();
+                } catch (final IOException ioe) {
+                    LOG.warn("Error closing ZIP source: {}", ioe.getMessage(), ioe);
+                }
+            }
         }
 
         throw new XPathException(this, "ZIP entry not found: " + entryName);

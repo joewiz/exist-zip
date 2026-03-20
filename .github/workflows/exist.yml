@@ -1,0 +1,135 @@
+# This workflow builds a XAR archive, deploys it into eXist-db, and runs smoke tests.
+
+name: exist-db CI
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+       fail-fast: false
+       matrix:
+         exist-version: [latest]
+
+    steps:
+      - uses: actions/checkout@v6
+
+      # Build with Maven
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      # Extract exist-core JAR from Docker image for compilation,
+      # since the published 7.0.0-SNAPSHOT in the Maven repo is stale.
+      - name: Pull eXist-db image
+        run: docker pull existdb/existdb:${{ matrix.exist-version }}
+
+      - name: Install exist-core from Docker image into local Maven repo
+        run: |
+          id=$(docker create existdb/existdb:${{ matrix.exist-version }})
+          docker cp "$id:/exist/lib/exist.uber.jar" /tmp/exist.uber.jar
+          docker rm "$id"
+          mvn install:install-file -Dfile=/tmp/exist.uber.jar \
+            -DgroupId=org.exist-db -DartifactId=exist-core \
+            -Dversion=7.0.0-SNAPSHOT -Dpackaging=jar -q
+
+      - name: Build with Maven
+        run: mvn clean package -DskipTests -q
+
+      # Deploy XAR in Container
+      - name: Start eXist-db container
+        run: |
+          docker run -dit -p 8080:8080 \
+          -v ${{ github.workspace }}/target:/exist/autodeploy \
+          --name exist --rm --health-interval=1s --health-start-period=1s \
+          existdb/existdb:${{ matrix.exist-version }}
+
+      - name: Wait for eXist-db to start and deploy packages
+        timeout-minutes: 5
+        run: |
+          while ! docker logs exist | grep -q "Server has started"; \
+          do sleep 6s; \
+          done
+          sleep 5
+
+      # Smoke tests: verify module loads and all functions are available
+      - name: Test zip:text-entry reads text from ZIP
+        run: |
+          # First, create and store a test ZIP in the database
+          result=$(curl -sf -u admin: -H "Content-Type: application/xml" --data '
+          <query xmlns="http://exist.sourceforge.net/NS/exist">
+            <text><![CDATA[
+              import module namespace zip = "http://expath.org/ns/zip";
+              let $desc :=
+                <zip:file xmlns:zip="http://expath.org/ns/zip">
+                  <zip:entry name="hello.txt" method="text">Hello from CI!</zip:entry>
+                  <zip:entry name="data.xml" method="xml"><root><item>test</item></root></zip:entry>
+                </zip:file>
+              let $binary := zip:zip-file($desc)
+              let $stored := xmldb:store("/db", "ci-test.zip", $binary, "application/zip")
+              return zip:text-entry(xs:anyURI("/db/ci-test.zip"), "hello.txt")
+            ]]></text>
+          </query>' "http://localhost:8080/exist/rest/db")
+          echo "$result"
+          echo "$result" | grep -q "Hello from CI!" || (echo "FAIL: expected 'Hello from CI!'" && exit 1)
+
+      - name: Test zip:xml-entry parses XML from ZIP
+        run: |
+          result=$(curl -sf -u admin: -H "Content-Type: application/xml" --data '
+          <query xmlns="http://exist.sourceforge.net/NS/exist">
+            <text><![CDATA[
+              import module namespace zip = "http://expath.org/ns/zip";
+              zip:xml-entry(xs:anyURI("/db/ci-test.zip"), "data.xml")/root/item/string()
+            ]]></text>
+          </query>' "http://localhost:8080/exist/rest/db")
+          echo "$result"
+          echo "$result" | grep -q "test" || (echo "FAIL: expected 'test'" && exit 1)
+
+      - name: Test zip:entries lists archive contents
+        run: |
+          result=$(curl -sf -u admin: -H "Content-Type: application/xml" --data '
+          <query xmlns="http://exist.sourceforge.net/NS/exist">
+            <text><![CDATA[
+              import module namespace zip = "http://expath.org/ns/zip";
+              count(zip:entries(xs:anyURI("/db/ci-test.zip"))//zip:entry)
+            ]]></text>
+          </query>' "http://localhost:8080/exist/rest/db")
+          echo "$result"
+          echo "$result" | grep -q "2" || (echo "FAIL: expected 2 entries" && exit 1)
+
+      - name: Test zip:binary-entry extracts binary data
+        run: |
+          result=$(curl -sf -u admin: -H "Content-Type: application/xml" --data '
+          <query xmlns="http://exist.sourceforge.net/NS/exist">
+            <text><![CDATA[
+              import module namespace zip = "http://expath.org/ns/zip";
+              zip:binary-entry(xs:anyURI("/db/ci-test.zip"), "hello.txt") instance of xs:base64Binary
+            ]]></text>
+          </query>' "http://localhost:8080/exist/rest/db")
+          echo "$result"
+          echo "$result" | grep -q "true" || (echo "FAIL: expected true" && exit 1)
+
+      - name: Test zip:update-entries adds new entry
+        run: |
+          result=$(curl -sf -u admin: -H "Content-Type: application/xml" --data '
+          <query xmlns="http://exist.sourceforge.net/NS/exist">
+            <text><![CDATA[
+              import module namespace zip = "http://expath.org/ns/zip";
+              let $desc :=
+                <zip:file xmlns:zip="http://expath.org/ns/zip" href="/db/ci-test.zip">
+                  <zip:entry name="new.txt" method="text">Added by update</zip:entry>
+                </zip:file>
+              let $_ := zip:update-entries($desc, xs:anyURI("/db/ci-updated.zip"))
+              return (
+                zip:text-entry(xs:anyURI("/db/ci-updated.zip"), "new.txt"),
+                zip:text-entry(xs:anyURI("/db/ci-updated.zip"), "hello.txt")
+              )
+            ]]></text>
+          </query>' "http://localhost:8080/exist/rest/db")
+          echo "$result"
+          echo "$result" | grep -q "Added by update" || (echo "FAIL: expected 'Added by update'" && exit 1)
+          echo "$result" | grep -q "Hello from CI!" || (echo "FAIL: original entry missing" && exit 1)

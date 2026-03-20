@@ -1,134 +1,136 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-
-    eXist-db Open Source Native XML Database
-    Copyright (C) 2001 The eXist-db Authors
-
-    info@exist-db.org
-    http://www.exist-db.org
-
-    This library is free software; you can redistribute it and/or
-    modify it under the terms of the GNU Lesser General Public
-    License as published by the Free Software Foundation; either
-    version 2.1 of the License, or (at your option) any later version.
-
-    This library is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-    Lesser General Public License for more details.
-
-    You should have received a copy of the GNU Lesser General Public
-    License along with this library; if not, write to the Free Software
-    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
-
--->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
         <groupId>org.exist-db</groupId>
-        <artifactId>exist-parent</artifactId>
-        <version>7.0.0-SNAPSHOT</version>
+        <artifactId>exist-apps-parent</artifactId>
+        <version>2.0.0</version>
+        <relativePath/>
     </parent>
 
+    <groupId>org.exist-db</groupId>
     <artifactId>exist-zip</artifactId>
-    <packaging>jar</packaging>
+    <version>1.0.0</version>
 
-    <name>eXist-db EXPath ZIP Module</name>
+    <name>EXPath ZIP Module</name>
     <description>Native implementation of the EXPath ZIP Module for eXist-db, using java.util.zip</description>
-    <url>https://github.com/eXist-db/exist-zip</url>
+    <url>https://github.com/joewiz/exist-zip</url>
+
+    <organization>
+        <name>The eXist-db Authors</name>
+        <url>https://exist-db.org</url>
+    </organization>
+
+    <licenses>
+        <license>
+            <name>GNU Lesser General Public License, version 2.1</name>
+            <url>https://opensource.org/licenses/LGPL-2.1</url>
+        </license>
+    </licenses>
+
+    <scm>
+        <url>https://github.com/joewiz/exist-zip.git</url>
+        <connection>scm:git:https://github.com/joewiz/exist-zip.git</connection>
+        <developerConnection>scm:git:https://github.com/joewiz/exist-zip.git</developerConnection>
+    </scm>
 
     <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.build.source>21</project.build.source>
+        <project.build.target>21</project.build.target>
+
+        <exist.version>7.0.0-SNAPSHOT</exist.version>
+
         <!-- used in the EXPath Package Descriptor -->
         <package-name>http://expath.org/ns/zip</package-name>
         <package-abbrev>exist-zip</package-abbrev>
-        <package-title>EXPath ZIP Module for eXist-db</package-title>
-        <package-final-name>exist-zip-${project.version}</package-final-name>
+
         <zip.module.namespace>http://expath.org/ns/zip</zip.module.namespace>
-        <zip.module.java.classname>ZipModule</zip.module.java.classname>
+        <zip.module.java.classname>org.exist.xquery.modules.zip.ZipModule</zip.module.java.classname>
     </properties>
 
     <dependencies>
         <dependency>
             <groupId>org.exist-db</groupId>
             <artifactId>exist-core</artifactId>
-            <version>${project.version}</version>
+            <version>${exist.version}</version>
             <scope>provided</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>commons-io</groupId>
-            <artifactId>commons-io</artifactId>
-            <scope>provided</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-api</artifactId>
-            <scope>provided</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>com.google.code.findbugs</groupId>
-            <artifactId>jsr305</artifactId>
-            <scope>provided</scope>
-        </dependency>
-
-        <!-- Test dependencies -->
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.xmlunit</groupId>
-            <artifactId>xmlunit-core</artifactId>
-            <scope>test</scope>
         </dependency>
     </dependencies>
 
-    <build>
-        <testResources>
-            <testResource>
-                <directory>src/test/resources</directory>
-                <filtering>false</filtering>
-            </testResource>
-            <testResource>
-                <directory>src/test/resources-filtered</directory>
-                <filtering>true</filtering>
-            </testResource>
-        </testResources>
+    <profiles>
+        <!-- Integration tests require exist-core installed locally.
+             Activate with: mvn test -Pintegration-tests -->
+        <profile>
+            <id>integration-tests</id>
+            <dependencies>
+                <dependency>
+                    <groupId>org.exist-db</groupId>
+                    <artifactId>exist-core</artifactId>
+                    <version>${exist.version}</version>
+                    <scope>test</scope>
+                </dependency>
+                <dependency>
+                    <groupId>org.exist-db</groupId>
+                    <artifactId>exist-start</artifactId>
+                    <version>${exist.version}</version>
+                    <scope>test</scope>
+                </dependency>
+                <dependency>
+                    <groupId>junit</groupId>
+                    <artifactId>junit</artifactId>
+                    <version>4.13.2</version>
+                    <scope>test</scope>
+                </dependency>
+            </dependencies>
+            <build>
+                <testResources>
+                    <testResource>
+                        <directory>src/test/resources</directory>
+                        <filtering>false</filtering>
+                    </testResource>
+                    <testResource>
+                        <directory>src/test/resources-filtered</directory>
+                        <filtering>true</filtering>
+                    </testResource>
+                </testResources>
+            </build>
+        </profile>
+    </profiles>
 
+    <build>
         <plugins>
             <plugin>
                 <groupId>ro.kuberam.maven.plugins</groupId>
                 <artifactId>kuberam-expath-plugin</artifactId>
-                <version>0.6.3</version>
-                <executions>
-                    <execution>
-                        <id>create-xar</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>make-xar</goal>
-                        </goals>
-                        <configuration>
-                            <descriptor>xar-assembly.xml</descriptor>
-                            <finalName>${package-final-name}</finalName>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-deploy-plugin</artifactId>
-                <configuration>
-                    <skip>true</skip>
-                </configuration>
             </plugin>
         </plugins>
     </build>
+
+    <repositories>
+        <repository>
+            <id>exist-db</id>
+            <name>eXist-db Releases</name>
+            <url>https://repo.exist-db.org/repository/exist-db/</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+        <repository>
+            <id>exist-db-snapshots</id>
+            <name>eXist-db Snapshots</name>
+            <url>https://repo.exist-db.org/repository/exist-db-snapshots/</url>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
 </project>
