@@ -44,7 +44,7 @@
         <exist.version>7.0.0-SNAPSHOT</exist.version>
 
         <!-- used in the EXPath Package Descriptor -->
-        <package-name>http://expath.org/ns/zip</package-name>
+        <package-name>http://exist-db.org/pkg/zip</package-name>
         <package-abbrev>exist-zip</package-abbrev>
 
         <zip.module.namespace>http://expath.org/ns/zip</zip.module.namespace>
