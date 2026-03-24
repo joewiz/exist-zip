@@ -41,9 +41,16 @@ Then restart eXist-db. Existing code using `zip:binary-entry`, `zip:text-entry`,
 
 ## Install
 
-Build the XAR (see below), then install:
+From a GitHub release:
 
 ```bash
+xst package install https://github.com/joewiz/exist-zip/releases/download/v0.9.0-SNAPSHOT/exist-zip-0.9.0-SNAPSHOT.xar
+```
+
+From a local build:
+
+```bash
+mvn package -DskipTests
 xst package install target/exist-zip-0.9.0-SNAPSHOT.xar
 ```
 
