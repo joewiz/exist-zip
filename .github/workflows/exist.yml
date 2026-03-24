@@ -143,7 +143,7 @@ jobs:
           result=$(curl -s -u admin: -H "Content-Type: application/xml" --data '
           <query xmlns="http://exist.sourceforge.net/NS/exist">
             <text><![CDATA[
-              "http://expath.org/ns/zip" = repo:list()
+              "http://exist-db.org/pkg/zip" = repo:list()
             ]]></text>
           </query>' "http://localhost:8080/exist/rest/db")
           echo "$result"
